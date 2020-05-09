@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo } from 'react'
 import PropTypes from 'prop-types'
 import classnames from 'classnames'
 import ListItem from '../../ui/list-item'
@@ -13,18 +13,16 @@ import { useCancelTransaction } from '../../../hooks/useCancelTransaction'
 import { useRetryTransaction } from '../../../hooks/useRetryTransaction'
 import Button from '../../ui/button'
 import Tooltip from '../../ui/tooltip'
-import TransactionListItemDetails from '../transaction-list-item-details/transaction-list-item-details.component'
 
 
-export default function TransactionListItem ({ transactionGroup, isEarliestNonce = false }) {
+export default function TransactionListItem ({ transactionGroup }) {
   const t = useI18nContext()
   const { hasCancelled } = transactionGroup
-  const [showDetails, setShowDetails] = useState(false)
 
   const [cancelEnabled, cancelTransaction] = useCancelTransaction(transactionGroup)
-  const [retryEnabled, retryTransaction] = useRetryTransaction(transactionGroup, isEarliestNonce)
+  const retryTransaction = useRetryTransaction(transactionGroup)
 
-  const { title, subtitle, category, primaryCurrency, recipientAddress, secondaryCurrency, status, senderAddress } = useTransactionDisplayData(transactionGroup)
+  const { title, subtitle, category, primaryCurrency, secondaryCurrency, status } = useTransactionDisplayData(transactionGroup)
 
   const isApprove = category === 'approval'
   const isSend = category === 'send'
@@ -32,7 +30,6 @@ export default function TransactionListItem ({ transactionGroup, isEarliestNonce
   const isUnapproved = status === 'unapproved'
   const isPending = status === 'pending'
   const isFailed = status === 'failed'
-  const isCancelled = status === 'cancelled'
 
   const color = isFailed ? '#D73A49' : '#2F80ED'
 
@@ -54,19 +51,9 @@ export default function TransactionListItem ({ transactionGroup, isEarliestNonce
     subtitleStatus = (
       <span><span className="transaction-list-item__status--failed">{t('failed')}</span> · </span>
     )
-  } else if (isCancelled) {
-    subtitleStatus = (
-      <span><span className="transaction-list-item__status--cancelled">{t('cancelled')}</span> · </span>
-    )
-  } else if (isPending && !isEarliestNonce) {
-    subtitleStatus = (
-      <span><span className="transaction-list-item__status--queued">{t('queued')}</span> · </span>
-    )
   }
 
   const className = classnames('transaction-list-item', { 'transaction-list-item--pending': isPending })
-
-  const toggleShowDetails = useCallback(() => setShowDetails((prev) => !prev), [])
 
   const cancelButton = useMemo(() => {
     const cancelButton = (
@@ -78,7 +65,7 @@ export default function TransactionListItem ({ transactionGroup, isEarliestNonce
         { t('cancel') }
       </Button>
     )
-    if (hasCancelled || !isPending) {
+    if (hasCancelled) {
       return null
     }
 
@@ -93,9 +80,6 @@ export default function TransactionListItem ({ transactionGroup, isEarliestNonce
   }, [cancelEnabled, cancelTransaction, hasCancelled])
 
   const speedUpButton = useMemo(() => {
-    if (!retryEnabled || !isPending) {
-      return null
-    }
     return (
       <Button
         type="secondary"
@@ -108,55 +92,36 @@ export default function TransactionListItem ({ transactionGroup, isEarliestNonce
   }, [retryTransaction])
 
   return (
-    <>
-      <ListItem
-        onClick={toggleShowDetails}
-        className={className}
-        title={title}
-        titleIcon={isPending && isEarliestNonce && (
-          <Preloader
-            size={16}
-            color="#D73A49"
-          />
-        )}
-        Icon={Icon}
-        iconColor={color}
-        subtitle={subtitle}
-        subtitleStatus={subtitleStatus}
-        rightContent={(
-          <>
-            <h2 className="transaction-list-item__primaryCurrency">{primaryCurrency}</h2>
-            <h3 className="transaction-list-item__secondaryCurrency">{secondaryCurrency}</h3>
-          </>
-        )}
-      >
-        {true && (
-          <div className="transaction-list-item__pendingActions">
-            {speedUpButton}
-            {cancelButton}
-          </div>
-        )}
-      </ListItem>
-      {showDetails && (
-        <TransactionListItemDetails
-          title={title}
-          onClose={toggleShowDetails}
-          transactionGroup={transactionGroup}
-          senderAddress={senderAddress}
-          recipientAddress={recipientAddress}
-          onRetry={retryTransaction}
-          showRetry={isEarliestNonce && isPending}
-          isEarliestNonce={isEarliestNonce}
-          onCancel={cancelTransaction}
-          showCancel={isPending && !hasCancelled}
-          cancelDisabled={!cancelEnabled}
+    <ListItem
+      className={className}
+      title={title}
+      titleIcon={isPending && (
+        <Preloader
+          size={16}
+          color="#D73A49"
         />
       )}
-    </>
+      Icon={Icon}
+      iconColor={color}
+      subtitle={subtitle}
+      subtitleStatus={subtitleStatus}
+      rightContent={(
+        <>
+          <h2 className="transaction-list-item__primaryCurrency">{primaryCurrency}</h2>
+          <h3 className="transaction-list-item__secondaryCurrency">{secondaryCurrency}</h3>
+        </>
+      )}
+    >
+      {true && (
+        <div className="transaction-list-item__pendingActions">
+          {speedUpButton}
+          {cancelButton}
+        </div>
+      )}
+    </ListItem>
   )
 }
 
 TransactionListItem.propTypes = {
   transactionGroup: PropTypes.object.isRequired,
-  isEarliestNonce: PropTypes.bool,
 }
